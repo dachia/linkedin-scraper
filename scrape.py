@@ -108,7 +108,7 @@ def scrape_commenters(driver, url):
     print(f"Found {len(links)} unique commenter profiles")
     return list(links)  # Convert set back to list before returning
 
-def setup_driver():
+def setup_driver(li_at):
     # Set up Chrome options
     chrome_options = Options()
     
@@ -121,7 +121,7 @@ def setup_driver():
 
     # Set cookies
     cookies = {
-        'li_at': 'AQEDAQkg7CwEdF8OAAABkez3lokAAAGSEQQaiU4AZzFN_Jbi2Jqo7otc2EM-hwf6NuPUJj3MVfn1mH9IvrKA3amCsdC7djaGohRuHPG6IetpcWc9jVFOhM9aXMwey4_1iCATTpfxgatQFc2-lYxX09v3',
+        'li_at': li_at,
     }
 
     for name, value in cookies.items():
@@ -129,44 +129,3 @@ def setup_driver():
     print("Cookies set")
 
     return driver
-
-def save_profiles_to_csv(profiles, filename='linkedin_profiles.csv'):
-    fieldnames = ['name', 'role', 'email', 'phone', 'link']
-    
-    with open(filename, mode='w', newline='', encoding='utf-8') as file:
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writeheader()
-        for profile in profiles:
-            writer.writerow(profile)
-    
-    print(f"Profiles saved to {filename}")
-
-def linkedin_scraper(url):
-    driver = setup_driver()
-
-    try:
-        # Scrape commenters
-        commenter_links = scrape_commenters(driver, url)
-        
-        profiles = []
-        for i, link in enumerate(commenter_links, 1):
-            print(f"Processing profile {i}/{len(commenter_links)}: {link}")
-            profile = scrape_profile(driver, link)
-            profiles.append(profile)
-            time.sleep(2)  # Wait before processing the next profile to avoid rate limits
-
-        # Save profiles to CSV
-        save_profiles_to_csv(profiles)
-
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")
-        print("Current page source:")
-        print(driver.page_source)
-
-    finally:
-        # Close the browser
-        driver.quit()
-
-# Example usage
-linkedin_url = "https://www.linkedin.com/posts/gisenberg_i-just-uploaded-a-new-podcast-with-jason-activity-7238939519310331905-HrIa"
-linkedin_scraper(linkedin_url)
