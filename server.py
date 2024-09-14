@@ -7,16 +7,17 @@ from use_cases import scrape_comment_profile
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/get_csv')
-def get_csv():
+@app.route('/scrape-commenters')
+def scrape_commenters():
     # Parse query parameters
     li_at = request.args.get('li_at')
     url = request.args.get('url')
+    user_agent = request.args.get('user_agent')
 
-    if not li_at or not url:
-        return "Missing required parameters: li_at and url", 400
+    if not li_at or not url or not user_agent:
+        return "Missing required parameters: li_at, url, and user_agent", 400
 
-    scrape_comment_profile(url, li_at)
+    scrape_comment_profile(url, li_at, user_agent)
 
     # Check if the CSV file exists
     csv_file = 'linkedin_profiles.csv'

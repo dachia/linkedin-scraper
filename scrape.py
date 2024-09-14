@@ -5,11 +5,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
+import random
 
 def scrape_profile(driver, link):
     print(f"Scraping profile: {link}")
     driver.get(link)
-    time.sleep(2)  # Wait for the profile page to load
+    time.sleep(random.uniform(3, 5))  # Random pause between 3-5 seconds
 
     try:
         name = WebDriverWait(driver, 10).until(
@@ -34,7 +35,7 @@ def scrape_profile(driver, link):
             EC.element_to_be_clickable((By.XPATH, "//a[text()='Contact info']"))
         )
         contact_info_button.click()
-        time.sleep(1)
+        time.sleep(random.uniform(2, 3))  # Random pause between 2-3 seconds
         print("Contact info button clicked")
 
         # Extract email
@@ -63,6 +64,7 @@ def scrape_profile(driver, link):
         }
         print("Using default N/A values for contact info")
 
+    time.sleep(random.uniform(2, 4))  # Random pause between 2-4 seconds before returning
     print("Profile scraping completed")
     return {
         "name": name,
@@ -75,6 +77,7 @@ def scrape_profile(driver, link):
 def scrape_commenters(driver, url):
     driver.get(url)
     print(f"Navigated to {url}")
+    time.sleep(random.uniform(3, 5))  # Random pause between 3-5 seconds
 
     # Wait for the page to load
     WebDriverWait(driver, 20).until(
@@ -89,7 +92,7 @@ def scrape_commenters(driver, url):
                 EC.element_to_be_clickable((By.CLASS_NAME, "comments-comments-list__load-more-comments-button"))
             )
             driver.execute_script("arguments[0].click();", load_more_button)
-            time.sleep(2)  # Wait for 2 seconds after clicking to avoid rate limits
+            time.sleep(random.uniform(3, 5))  # Random pause between 3-5 seconds
             return True
         except:
             return False
@@ -108,11 +111,13 @@ def scrape_commenters(driver, url):
             links.add(link)
     
     print(f"Found {len(links)} unique individual commenter profiles")
+    time.sleep(random.uniform(2, 4))  # Random pause between 2-4 seconds before returning
     return list(links)  # Convert set back to list before returning
 
-def setup_driver(li_at):
+def setup_driver(li_at, user_agent):
     # Set up Chrome options
     chrome_options = Options()
+    chrome_options.add_argument(f'user-agent={user_agent}')
     
     # Set up the WebDriver with options
     driver = webdriver.Chrome(options=chrome_options)

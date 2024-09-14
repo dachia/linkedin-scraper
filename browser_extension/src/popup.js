@@ -1,5 +1,5 @@
-document.getElementById('downloadButton').addEventListener('click', () => {
+document.getElementById('scrape-commenters').addEventListener('click', () => {
   chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-    chrome.tabs.sendMessage(tabs[0].id, {action: "downloadProfiles"});
+    chrome.tabs.sendMessage(tabs[0].id, {action: "scrapeCommenters"});
   });
 });
