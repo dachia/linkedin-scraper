@@ -12,10 +12,10 @@ def scrape_commenters():
     # Parse query parameters
     li_at = request.args.get('li_at')
     url = request.args.get('url')
-    user_agent = request.args.get('user_agent')
+    user_agent = request.headers.get('User-Agent')
 
     if not li_at or not url or not user_agent:
-        return "Missing required parameters: li_at, url, and user_agent", 400
+        return "Missing required parameters: li_at, url, or User-Agent header", 400
 
     scrape_comment_profile(url, li_at, user_agent)
 
