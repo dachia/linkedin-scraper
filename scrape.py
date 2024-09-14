@@ -103,9 +103,11 @@ def scrape_commenters(driver, url):
     links = set()  # Use a set to store unique links
     for name_element in name_elements:
         link = name_element.find_element(By.TAG_NAME, "a").get_attribute("href")
-        links.add(link)
+        # Filter out company URLs
+        if "/in/" in link:
+            links.add(link)
     
-    print(f"Found {len(links)} unique commenter profiles")
+    print(f"Found {len(links)} unique individual commenter profiles")
     return list(links)  # Convert set back to list before returning
 
 def setup_driver(li_at):

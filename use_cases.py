@@ -27,7 +27,3 @@ def scrape_comment_profile(url, li_at):
     finally:
         # Close the browser
         driver.quit()
-
-# Example usage
-# linkedin_url = "https://www.linkedin.com/posts/gisenberg_i-just-uploaded-a-new-podcast-with-jason-activity-7238939519310331905-HrIa"
-# scrape_comment_profile(linkedin_url)
