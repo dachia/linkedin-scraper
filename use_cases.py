@@ -1,4 +1,4 @@
-from scrape import setup_driver, scrape_commenters, scrape_profile, auto_connect
+from scrape import setup_driver, scrape_commenters, scrape_profile, auto_connect, configure_filters
 from utils import save_profiles_to_csv, wait_random
 
 def scrape_comment_profile(url, li_at, user_agent):
@@ -48,3 +48,62 @@ def auto_connect_profiles(url, li_at, user_agent, max_pages=10):
     finally:
         wait_random()
         driver.quit()
+
+def configure_search_filters(url, li_at, user_agent, filters):
+    driver = setup_driver(li_at, user_agent)
+
+    try:
+        wait_random()
+        # Configure filters
+        configure_filters(
+            driver,
+            url,
+            # current_company=filters.get('current_company'),
+            current_company=[
+                "Bazaar Technologies",
+                "Retailo",
+                "SadaPay",
+                "Tajir",
+                # "QisstPay",
+                "Jugnu",
+                "Oraan",
+                "PostEx",
+                "Truck It In",
+                "Abhi",
+                "CreditBook",
+                "DigiKhata",
+                "Vouch",
+                "Krave Mart",
+                "Sastaticket.pk",
+                "BridgeLinx",
+                "BitBlaze",
+                "MyTm",
+                "Chikoo",
+                "Colabs",
+                "Careem",
+                "Motive",
+                "Symantec",
+                "Securiti",
+                "Overjet",
+                "Educative",
+                "Laam",
+                "Adalfi",
+                "Neem"],
+            locations=["Pakistan"],
+            connections=["1st", "2nd", "3rd"],
+            current_role="React native"
+        )
+
+        # Get the new URL after applying filters
+        new_url = driver.current_url
+        wait_random("extra_long")
+
+        return {"success": True, "filtered_url": new_url}
+
+    except Exception as e:
+        print(f"An error occurred during filter configuration: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+    finally:
+        wait_random()
+        # driver.quit()

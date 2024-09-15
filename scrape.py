@@ -6,7 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 import random
-from selenium.common.exceptions import NoSuchElementException, ElementClickInterceptedException
+from selenium.common.exceptions import NoSuchElementException, ElementClickInterceptedException, TimeoutException, StaleElementReferenceException
 from selenium.webdriver.common.action_chains import ActionChains
 import math
 from utils import wait_random, navigate_to_url
@@ -370,5 +370,234 @@ def auto_connect(driver, url, max_pages=10):
             print(f"Error finding or clicking Next button: {str(e)}")
             print("No Next button found or error occurred. Ending auto-connect process.")
             break
+def hide_chat(driver):
+    print("Attempting to hide chat")
+    try:
+        # Wait for the hide chat button to be clickable
+        hide_chat_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'msg-overlay-bubble-header__control') and contains(@class, 'msg-overlay-bubble-header__control--new-convo-btn') and .//svg[@data-test-icon='chevron-down-small']]"))
+        )
+        print("Found hide chat button")
+        
+        # Scroll to the button if necessary
+        # human_like_scroll(driver, hide_chat_button)
+        
+        # Click the button
+        human_like_click(driver, hide_chat_button)
+        print("Successfully clicked hide chat button")
+        
+        # Wait for the chat to be hidden
+        WebDriverWait(driver, 5).until(
+            EC.invisibility_of_element_located((By.XPATH, "//aside[contains(@class, 'msg-overlay-list-bubble')]"))
+        )
+        print("Chat hidden successfully")
+    except TimeoutException:
+        print("Hide chat button not found or not clickable")
+    except Exception as e:
+        print(f"Error hiding chat: {str(e)}")
+
+def accept_cookies(driver):
+    print("Attempting to accept cookies")
+    try:
+        # Wait for the accept cookies button to be clickable
+        accept_button = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//button[@data-test-global-alert-action='0' and contains(@class, 'artdeco-global-alert__action')]"))
+        )
+        
+        # Check if the button is in the viewport
+        if not is_element_in_viewport(driver, accept_button):
+            print("Accept cookies button is not in viewport. Attempting to scroll.")
+            driver.execute_script("arguments[0].scrollIntoView({behavior: 'auto', block: 'center'});", accept_button)
+            wait_random('short')
+        
+        # Try to click using JavaScript if regular click fails
+        try:
+            human_like_click(driver, accept_button)
+        except Exception as e:
+            print(f"Regular click failed: {str(e)}. Attempting JavaScript click.")
+            driver.execute_script("arguments[0].click();", accept_button)
+        
+        print("Successfully clicked accept cookies button")
+        
+        # Wait for the cookie banner to disappear
+        WebDriverWait(driver, 5).until(
+            EC.invisibility_of_element_located((By.XPATH, "//div[contains(@class, 'artdeco-global-alert')]"))
+        )
+        print("Cookies accepted successfully")
+    except TimeoutException:
+        print("Accept cookies button not found or not clickable")
+    except Exception as e:
+        print(f"Error accepting cookies: {str(e)}")
+        # If all else fails, try to dismiss using JavaScript
+        try:
+            driver.execute_script("""
+                var elements = document.getElementsByClassName('artdeco-global-alert__action');
+                for(var i=0; i<elements.length; i++) {
+                    if(elements[i].textContent.includes('Accept')) {
+                        elements[i].click();
+                        break;
+                    }
+                }
+            """)
+            print("Attempted to accept cookies using JavaScript")
+        except Exception as js_error:
+            print(f"JavaScript cookie acceptance failed: {str(js_error)}")
+
+def configure_filters(driver, url, current_company=None, past_company=None, locations=None, connections=None, current_role=None):
+    print("Starting filter configuration")
+    navigate_to_url(driver, url)
+    print(f"Navigated to URL: {url}")
+    accept_cookies(driver)
+    # hide_chat(driver)
+
+    # Click on "All filters" button to open filters
+    all_filters_button = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'search-reusables__all-filters-pill-button') and @aria-label='Show all filters. Clicking this button displays all available filter options.']"))
+    )
+    print("Clicking on 'All filters' button")
+    human_like_click(driver, all_filters_button)
+    
+    # Wait for the filters to be expanded
+    print("Waiting for filters to expand")
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.XPATH, "//button[@aria-expanded='true' and contains(@class, 'search-reusables__all-filters-pill-button')]"))
+    )
+    print("Filters expanded successfully")
+
+    # Wait for the filter modal to appear
+    print("Waiting for filter modal to appear")
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.CLASS_NAME, "search-reusables__side-panel"))
+    )
+    print("Filter modal is now visible")
+
+    # Set current company
+    if current_company:
+        print(f"Setting current company filters: {current_company}")
+        for company in current_company:
+            set_company_filter(driver, "current-company-filter-value", company)
+            # wait_random()
+    
+    # Set past company
+    # if past_company:
+    #     print(f"Setting past company filter: {past_company}")
+    #     set_company_filter(driver, "past-company-filter-value", past_company)
+    
+    # Set locations
+    # if locations:
+    #     print(f"Setting location filters: {locations}")
+    #     set_location_filter(driver, locations)
+    
+    # # Set connections
+    # if connections:
+    #     print(f"Setting connections filters: {connections}")
+    #     set_connections_filter(driver, connections)
+    
+    # # Set current role
+    # if current_role:
+    #     print(f"Setting current role filter: {current_role}")
+    #     set_current_role_filter(driver, current_role)
+    
+    # Click "Show results" button
+    print("Clicking 'Show results' button")
+    show_results_button = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'search-reusables__secondary-filters-show-results-button')]"))
+    )
+    human_like_click(driver, show_results_button)
+    
+    # Wait for results to load
+    print("Waiting for results to load")
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.CLASS_NAME, "search-results-container"))
+    )
+    print("Results loaded successfully")
+
+def set_company_filter(driver, filter_name, company):
+    print(f"Setting company filter: {filter_name} = {company}")
+    try:
+        # Locate the filter modal content div
+        filter_modal_content = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "artdeco-modal__content"))
+        )
+
+        # Scroll to the "Add a company" button within the filter modal
+        add_company_button = WebDriverWait(filter_modal_content, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//button[contains(@class, 'reusable-search-filters-advanced-filters__add-filter-button') and .//span[text()='Add a company']]"))
+        )
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", add_company_button)
+        print("Scrolled to center 'Add a company' button")
+
+        human_like_click(driver, add_company_button)
+        print("Clicked 'Add a company' button")
+        
+        company_search = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Add a company']"))
+        )
+        print(f"Found company search input")
+        company_search.send_keys(company)
+        print(f"Entered company name: {company}")
+        
+        wait_random('short')
+        
+        # Implement retry mechanism for company selection
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            try:
+                company_option = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'basic-typeahead__selectable')][1]"))
+                )
+                print(f"Found company option: {company}")
+                company_option.click()
+                # human_like_click(driver, company_option)
+                print(f"Clicked company option: {company}")
+                break  # If successful, exit the retry loop
+            except StaleElementReferenceException:
+                if attempt < max_attempts - 1:
+                    print(f"Stale element when selecting company. Retrying... (Attempt {attempt + 1}/{max_attempts})")
+                    wait_random('short')  # Wait before retrying
+                else:
+                    print(f"Failed to select company after {max_attempts} attempts.")
+                    raise
+            except TimeoutException:
+                print(f"Timeout while waiting for company option. Retrying... (Attempt {attempt + 1}/{max_attempts})")
+                if attempt == max_attempts - 1:
+                    raise
+
+        print(f"Successfully set company filter: {filter_name} = {company}")
+    except Exception as e:
+        print(f"Error in set_company_filter: {str(e)}")
+        raise
+
+def set_location_filter(driver, locations):
+    for location in locations:
+        location_input = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//input[@name='locations-filter-value']/../following-sibling::button"))
+        )
+        human_like_click(driver, location_input)
+        
+        location_search = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Add a location']"))
+        )
+        location_search.send_keys(location)
+        
+        wait_random('short')
+        
+        location_option = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, f"//div[contains(@class, 'basic-typeahead__selectable')]//span[text()='{location}']"))
+        )
+        human_like_click(driver, location_option)
+
+def set_connections_filter(driver, connections):
+    for connection in connections:
+        connection_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, f"//button[contains(@class, 'search-reusables__multiselect-pill-button') and contains(., '{connection}')]"))
+        )
+        human_like_click(driver, connection_button)
+
+def set_current_role_filter(driver, role):
+    title_input = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Title']"))
+    )
+    title_input.send_keys(role)
 
     print(f"Auto-connect process completed. Processed {pages_processed} pages.")

@@ -10,3 +10,10 @@ document.getElementById('auto-connect').addEventListener('click', () => {
     chrome.tabs.sendMessage(tabs[0].id, {action: "autoConnect"});
   });
 });
+
+// Add event listener for configure filters button
+document.getElementById('configure-filters').addEventListener('click', () => {
+  chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+    chrome.tabs.sendMessage(tabs[0].id, {action: "configureFilters"});
+  });
+});

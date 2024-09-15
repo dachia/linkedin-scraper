@@ -2,7 +2,7 @@ from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
 import os
 
-from use_cases import scrape_comment_profile, auto_connect_profiles
+from use_cases import scrape_comment_profile, auto_connect_profiles, configure_search_filters
 
 app = Flask(__name__)
 CORS(app)
@@ -29,6 +29,10 @@ def scrape():
                          download_name=csv_file)
     elif action == "autoConnect":
         result = auto_connect_profiles(url, li_at, user_agent)
+        return jsonify(result)
+    elif action == "configureFilters":
+        filters = data.get('filters', {})
+        result = configure_search_filters(url, li_at, user_agent, filters)
         return jsonify(result)
     else:
         return jsonify({"error": "Invalid action"}), 400
