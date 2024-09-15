@@ -32,16 +32,55 @@ function fetchAndDownloadCsv(url, filename, userAgent) {
     .catch(error => console.error('Error downloading CSV:', error));
 }
 
+function sendPostRequest(url, data, userAgent) {
+  return fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent': userAgent
+    },
+    body: JSON.stringify(data)
+  });
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "scrapeCommenters") {
+  if (request.action === "scrapeCommenters" || request.action === "autoConnect") {
     getLiAtCookie((li_at) => {
       if (li_at) {
-        const url = getEncodedUrl();
-        const encodedLiAt = encodeURIComponent(li_at);
-        const userAgent = encodeURIComponent(getUserAgent());
-        const downloadUrl = `http://localhost:8000/scrape-commenters?url=${url}&li_at=${encodedLiAt}&user_agent=${userAgent}`;
+        const url = window.location.href;
+        const userAgent = getUserAgent();
+        const endpoint = 'http://localhost:8000/scrape';
         
-        fetchAndDownloadCsv(downloadUrl, 'linkedin_profiles.csv', getUserAgent());
+        const data = {
+          action: request.action,
+          url: url,
+          li_at: li_at,
+          user_agent: userAgent
+        };
+
+        sendPostRequest(endpoint, data, userAgent)
+          .then(response => {
+            if (request.action === "scrapeCommenters") {
+              return response.blob();
+            } else {
+              return response.json();
+            }
+          })
+          .then(result => {
+            if (request.action === "scrapeCommenters") {
+              const url = window.URL.createObjectURL(result);
+              const a = document.createElement('a');
+              a.style.display = 'none';
+              a.href = url;
+              a.download = 'linkedin_profiles.csv';
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+            } else {
+              console.log('Auto-connect response:', result);
+            }
+          })
+          .catch(error => console.error(`Error during ${request.action}:`, error));
       } else {
         console.error('LinkedIn li_at cookie not found');
       }

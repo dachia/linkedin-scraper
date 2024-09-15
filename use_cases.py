@@ -1,14 +1,11 @@
-from scrape import setup_driver, scrape_commenters, scrape_profile
-from utils import save_profiles_to_csv
-import time
-import random
+from scrape import setup_driver, scrape_commenters, scrape_profile, auto_connect
+from utils import save_profiles_to_csv, wait_random
 
 def scrape_comment_profile(url, li_at, user_agent):
     driver = setup_driver(li_at, user_agent)
 
     try:
-        # Pause after setting up the driver
-        time.sleep(random.uniform(3, 5))
+        wait_random()
 
         # Scrape commenters
         commenter_links = scrape_commenters(driver, url)
@@ -18,11 +15,9 @@ def scrape_comment_profile(url, li_at, user_agent):
             print(f"Processing profile {i}/{len(commenter_links)}: {link}")
             profile = scrape_profile(driver, link)
             profiles.append(profile)
-            # Wait before processing the next profile to avoid rate limits
-            time.sleep(random.uniform(5, 8))  # Increased pause between profile scrapes
+            wait_random('long')  # Longer pause between profile scrapes
 
-        # Pause before saving to CSV
-        time.sleep(random.uniform(2, 4))
+        wait_random()
 
         # Save profiles to CSV
         save_profiles_to_csv(profiles)
@@ -30,10 +25,26 @@ def scrape_comment_profile(url, li_at, user_agent):
     except Exception as e:
         print(f"An error occurred: {str(e)}")
         print("Current page source:")
-        print(driver.page_source)
+        # print(driver.page_source)
 
     finally:
-        # Pause before closing the browser
-        time.sleep(random.uniform(2, 4))
-        # Close the browser
+        wait_random()
+        driver.quit()
+
+def auto_connect_profiles(url, li_at, user_agent, max_pages=10):
+    driver = setup_driver(li_at, user_agent)
+
+    try:
+        wait_random()
+
+        # Call the auto_connect function
+        auto_connect(driver, url, max_pages)
+
+    except Exception as e:
+        print(f"An error occurred during auto-connect: {str(e)}")
+        print("Current page source:")
+        # print(driver.page_source)
+
+    finally:
+        wait_random()
         driver.quit()
