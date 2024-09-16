@@ -17,3 +17,10 @@ document.getElementById('configure-filters').addEventListener('click', () => {
     chrome.tabs.sendMessage(tabs[0].id, {action: "configureFilters"});
   });
 });
+
+// Add event listener for scrape search results button
+document.getElementById('scrape-search-results').addEventListener('click', () => {
+  chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+    chrome.tabs.sendMessage(tabs[0].id, {action: "scrapeSearchResults"});
+  });
+});

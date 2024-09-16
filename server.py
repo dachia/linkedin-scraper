@@ -2,7 +2,7 @@ from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
 import os
 
-from use_cases import scrape_comment_profile, auto_connect_profiles, configure_search_filters
+from use_cases import scrape_comment_profile, auto_connect_profiles, configure_search_filters, scrape_search_results
 
 app = Flask(__name__)
 CORS(app)
@@ -34,6 +34,18 @@ def scrape():
         filters = data.get('filters', {})
         result = configure_search_filters(url, li_at, user_agent, filters)
         return jsonify(result)
+    elif action == "scrapeSearchResults":
+        result = scrape_search_results(url, li_at, user_agent)
+        if result["success"]:
+            csv_file = 'linkedin_profile_links.csv'
+            if not os.path.exists(csv_file):
+                return jsonify({"error": "CSV file not found"}), 404
+            return send_file(csv_file, 
+                             mimetype='text/csv',
+                             as_attachment=True,
+                             download_name=csv_file)
+        else:
+            return jsonify(result), 400
     else:
         return jsonify({"error": "Invalid action"}), 400
 

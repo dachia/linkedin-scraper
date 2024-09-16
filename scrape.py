@@ -1,6 +1,5 @@
 import csv
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -9,126 +8,11 @@ import random
 from selenium.common.exceptions import NoSuchElementException, ElementClickInterceptedException, TimeoutException, StaleElementReferenceException
 from selenium.webdriver.common.action_chains import ActionChains
 import math
-from utils import wait_random, navigate_to_url
-
-def setup_driver(li_at, user_agent):
-    # Set up Chrome options
-    chrome_options = Options()
-    chrome_options.add_argument(f'user-agent={user_agent}')
-    
-    # Set up the WebDriver with options
-    driver = webdriver.Chrome(options=chrome_options)
-
-    # Navigate to the domain for which you want to set cookies
-    navigate_to_url(driver, "https://www.linkedin.com")
-    print("Navigated to LinkedIn homepage")
-
-    # Set cookies
-    cookies = {
-        'li_at': li_at,
-    }
-
-    for name, value in cookies.items():
-        driver.add_cookie({'name': name, 'value': value})
-    print("Cookies set")
-
-    return driver
-
-def human_like_mouse_move(driver, element):
-    action = ActionChains(driver)
-    action.move_to_element_with_offset(element, 0, 0)
-    
-    # Generate a random number of intermediate points
-    num_steps = random.randint(5, 10)
-    
-    for _ in range(num_steps):
-        x_offset = random.randint(-50, 50)
-        y_offset = random.randint(-50, 50)
-        action.move_by_offset(x_offset, y_offset)
-    
-    action.move_to_element(element)
-    action.perform()
-    wait_random('short')
-
-def get_header_height(driver):
-    try:
-        header = driver.find_element(By.CSS_SELECTOR, "section.scaffold-layout-toolbar")
-        return header.rect['height'] + 20  # Added a buffer of 20 pixels
-    except NoSuchElementException:
-        print("Header not found. Returning default height.")
-        return 70  # Default height if header is not found
-
-def is_element_in_viewport(driver, element):
-    """Check if an element is in the viewport with some offsets."""
-    return driver.execute_script("""
-        var rect = arguments[0].getBoundingClientRect();
-        var offset = 50;  // Offset in pixels
-        return (
-            rect.top >= offset &&
-            rect.left >= 0 &&
-            rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) - offset &&
-            rect.right <= (window.innerWidth || document.documentElement.clientWidth)
-        );
-    """, element)
-
-def human_like_scroll(driver, element):
-    print(f"Attempting to scroll to element: {element.tag_name}")
-    
-    # Check if the element is already in the viewport
-    if is_element_in_viewport(driver, element):
-        print("Element is already in viewport. No need to scroll.")
-        return
-
-    header_height = get_header_height(driver)
-    target_y = element.location['y']
-    viewport_height = driver.execute_script("return window.innerHeight")
-    current_y = driver.execute_script("return window.pageYOffset")
-    
-    print(f"Current scroll position: {current_y}")
-    print(f"Target scroll position: {target_y}")
-    
-    # Adjust target_y to account for header
-    target_y = max(0, target_y - header_height - 50)  # 50px extra buffer
-    print(f"Adjusted target scroll position: {target_y}")
-
-    # Scroll until the target position is reached or the element is unloaded
-    while current_y < target_y:
-        scroll_amount = min(random.randint(200, 500), target_y - current_y)
-        driver.execute_script(f"window.scrollBy(0, {scroll_amount});")
-        print(f"Scrolled by {scroll_amount} pixels")
-        wait_random('short')
-        current_y = driver.execute_script("return window.pageYOffset")
-        print(f"New scroll position: {current_y}")
-
-        # Check if the element is still in the DOM and its position has not changed
-        try:
-            # Check if the element is now in the viewport
-            if is_element_in_viewport(driver, element):
-                print("Element is now in view. Stopping scroll.")
-                break
-            
-            new_target_y = element.location['y']
-            if new_target_y != target_y:
-                print("Element position has changed. Updating target position.")
-                target_y = max(0, new_target_y - header_height - 50)  # Update target_y
-                print(f"New target scroll position: {target_y}")
-        except NoSuchElementException:
-            print("Element has been unloaded from the DOM. Stopping scroll.")
-            break
-
-    # Final adjustment to ensure the element is in view
-    if not is_element_in_viewport(driver, element):
-        print("Element still not in view. Performing final adjustment.")
-        driver.execute_script("arguments[0].scrollIntoView({behavior: 'auto', block: 'center'});", element)
-        wait_random('short')
-        print("Final adjustment completed.")
-    else:
-        print("Element is now in view.")
-
-def human_like_click(driver, element):
-    human_like_mouse_move(driver, element)
-    element.click()
-    wait_random('short')
+from utils import (
+    wait_random, navigate_to_url, setup_driver, human_like_mouse_move,
+    get_header_height, is_element_in_viewport, human_like_scroll, human_like_click,
+    close_modal, human_like_scroll_page, hide_chat, accept_cookies
+)
 
 def scrape_profile(driver, link):
     print(f"Scraping profile: {link}")
@@ -237,65 +121,6 @@ def scrape_commenters(driver, url):
     wait_random()
     return list(links)  # Convert set back to list before returning
 
-def close_modal(driver):
-    try:
-        # Try clicking the close button first
-        close_button = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[@aria-label='Dismiss' and @data-test-modal-close-btn]"))
-        )
-        human_like_click(driver, close_button)
-        print("Closed the modal using the close button.")
-    except Exception as e:
-        print(f"Error clicking close button: {str(e)}")
-        try:
-            # If clicking the button fails, try clicking outside the modal
-            modal_backdrop = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, ".artdeco-modal-overlay"))
-            )
-            action = ActionChains(driver)
-            action.move_to_element_with_offset(modal_backdrop, 1, 1).click().perform()
-            print("Closed the modal by clicking outside.")
-        except Exception as e2:
-            print(f"Error clicking outside modal: {str(e2)}")
-            # As a last resort, try using JavaScript
-            driver.execute_script("""
-                var closeButton = document.querySelector('button[aria-label="Dismiss"][data-test-modal-close-btn]');
-                if (closeButton) {
-                    closeButton.click();
-                } else {
-                    var modalBackdrop = document.querySelector('.artdeco-modal-overlay');
-                    if (modalBackdrop) {
-                        modalBackdrop.click();
-                    }
-                }
-            """)
-            print("Attempted to close the modal using JavaScript.")
-    
-    wait_random('short')
-
-def human_like_scroll_page(driver):
-    # Get the total height of the page
-    total_height = driver.execute_script("return document.body.scrollHeight")
-    viewport_height = driver.execute_script("return window.innerHeight")
-    
-    # Scroll down
-    current_position = 0
-    while current_position < total_height:
-        scroll_amount = random.randint(300, 700)  # Increased scroll amount
-        driver.execute_script(f"window.scrollBy(0, {scroll_amount});")
-        current_position += scroll_amount
-        wait_random('short')
-    
-    # Short pause at the bottom
-    wait_random('short')  # Changed from 'standard' to 'short'
-    
-    # Scroll back up
-    while current_position > 0:
-        scroll_amount = random.randint(300, 700)  # Increased scroll amount
-        driver.execute_script(f"window.scrollBy(0, -{scroll_amount});")
-        current_position -= scroll_amount
-        wait_random('short')
-
 def auto_connect(driver, url, max_pages=10):
     print("Starting auto-connect process")
     navigate_to_url(driver, url)
@@ -370,78 +195,6 @@ def auto_connect(driver, url, max_pages=10):
             print(f"Error finding or clicking Next button: {str(e)}")
             print("No Next button found or error occurred. Ending auto-connect process.")
             break
-def hide_chat(driver):
-    print("Attempting to hide chat")
-    try:
-        # Wait for the hide chat button to be clickable
-        hide_chat_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'msg-overlay-bubble-header__control') and contains(@class, 'msg-overlay-bubble-header__control--new-convo-btn') and .//svg[@data-test-icon='chevron-down-small']]"))
-        )
-        print("Found hide chat button")
-        
-        # Scroll to the button if necessary
-        # human_like_scroll(driver, hide_chat_button)
-        
-        # Click the button
-        human_like_click(driver, hide_chat_button)
-        print("Successfully clicked hide chat button")
-        
-        # Wait for the chat to be hidden
-        WebDriverWait(driver, 5).until(
-            EC.invisibility_of_element_located((By.XPATH, "//aside[contains(@class, 'msg-overlay-list-bubble')]"))
-        )
-        print("Chat hidden successfully")
-    except TimeoutException:
-        print("Hide chat button not found or not clickable")
-    except Exception as e:
-        print(f"Error hiding chat: {str(e)}")
-
-def accept_cookies(driver):
-    print("Attempting to accept cookies")
-    try:
-        # Wait for the accept cookies button to be clickable
-        accept_button = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, "//button[@data-test-global-alert-action='0' and contains(@class, 'artdeco-global-alert__action')]"))
-        )
-        
-        # Check if the button is in the viewport
-        if not is_element_in_viewport(driver, accept_button):
-            print("Accept cookies button is not in viewport. Attempting to scroll.")
-            driver.execute_script("arguments[0].scrollIntoView({behavior: 'auto', block: 'center'});", accept_button)
-            wait_random('short')
-        
-        # Try to click using JavaScript if regular click fails
-        try:
-            human_like_click(driver, accept_button)
-        except Exception as e:
-            print(f"Regular click failed: {str(e)}. Attempting JavaScript click.")
-            driver.execute_script("arguments[0].click();", accept_button)
-        
-        print("Successfully clicked accept cookies button")
-        
-        # Wait for the cookie banner to disappear
-        WebDriverWait(driver, 5).until(
-            EC.invisibility_of_element_located((By.XPATH, "//div[contains(@class, 'artdeco-global-alert')]"))
-        )
-        print("Cookies accepted successfully")
-    except TimeoutException:
-        print("Accept cookies button not found or not clickable")
-    except Exception as e:
-        print(f"Error accepting cookies: {str(e)}")
-        # If all else fails, try to dismiss using JavaScript
-        try:
-            driver.execute_script("""
-                var elements = document.getElementsByClassName('artdeco-global-alert__action');
-                for(var i=0; i<elements.length; i++) {
-                    if(elements[i].textContent.includes('Accept')) {
-                        elements[i].click();
-                        break;
-                    }
-                }
-            """)
-            print("Attempted to accept cookies using JavaScript")
-        except Exception as js_error:
-            print(f"JavaScript cookie acceptance failed: {str(js_error)}")
 
 def configure_filters(driver, url, current_company=None, past_company=None, locations=None, connections=None, current_role=None):
     print("Starting filter configuration")
@@ -478,25 +231,6 @@ def configure_filters(driver, url, current_company=None, past_company=None, loca
             set_company_filter(driver, "current-company-filter-value", company)
             # wait_random()
     
-    # Set past company
-    # if past_company:
-    #     print(f"Setting past company filter: {past_company}")
-    #     set_company_filter(driver, "past-company-filter-value", past_company)
-    
-    # Set locations
-    # if locations:
-    #     print(f"Setting location filters: {locations}")
-    #     set_location_filter(driver, locations)
-    
-    # # Set connections
-    # if connections:
-    #     print(f"Setting connections filters: {connections}")
-    #     set_connections_filter(driver, connections)
-    
-    # # Set current role
-    # if current_role:
-    #     print(f"Setting current role filter: {current_role}")
-    #     set_current_role_filter(driver, current_role)
     
     # Click "Show results" button
     print("Clicking 'Show results' button")
@@ -568,36 +302,114 @@ def set_company_filter(driver, filter_name, company):
         print(f"Error in set_company_filter: {str(e)}")
         raise
 
-def set_location_filter(driver, locations):
-    for location in locations:
-        location_input = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, "//input[@name='locations-filter-value']/../following-sibling::button"))
-        )
-        human_like_click(driver, location_input)
+def scrape_search(driver, url):
+    driver.get(url)
+    wait_random()
+    
+    profile_links = []
+    profiles = []  # List to store profile details
+    
+    # Find all profile link elements
+    link_elements = driver.find_elements(By.CSS_SELECTOR, "div.entity-result__divider")
+    
+    # Extract href attributes and other details
+    for index, element in enumerate(link_elements, 1):
+        print(f"Processing element {index}/{len(link_elements)}")
         
-        location_search = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Add a location']"))
-        )
-        location_search.send_keys(location)
+        try:
+            link_element = element.find_element(By.CSS_SELECTOR, "span.entity-result__title-text a.app-aware-link")
+            link = link_element.get_attribute("href")
+            name_element = link_element.find_element(By.CSS_SELECTOR, "span[aria-hidden='true']")
+            name = name_element.text.strip()
+            print(f"Found link: {link}")
+            print(f"Found name: {name}")
+        except Exception as e:
+            continue
+            print(f"Error finding link: {str(e)}")
+            link = "N/A"
         
-        wait_random('short')
+        try:
+            role = element.find_element(By.CSS_SELECTOR, "div.entity-result__primary-subtitle").text
+            print(f"Found role: {role}")
+        except Exception as e:
+            print(f"Error finding role: {str(e)}")
+            role = "N/A"
         
-        location_option = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, f"//div[contains(@class, 'basic-typeahead__selectable')]//span[text()='{location}']"))
-        )
-        human_like_click(driver, location_option)
-
-def set_connections_filter(driver, connections):
-    for connection in connections:
-        connection_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, f"//button[contains(@class, 'search-reusables__multiselect-pill-button') and contains(., '{connection}')]"))
-        )
-        human_like_click(driver, connection_button)
-
-def set_current_role_filter(driver, role):
-    title_input = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Title']"))
-    )
-    title_input.send_keys(role)
-
-    print(f"Auto-connect process completed. Processed {pages_processed} pages.")
+        try:
+            location = element.find_element(By.CSS_SELECTOR, "div.entity-result__secondary-subtitle").text
+            print(f"Found location: {location}")
+        except Exception as e:
+            print(f"Error finding location: {str(e)}")
+            location = "N/A"
+        
+        profile_links.append(link)
+        profiles.append({
+            "name": name,
+            "role": role,
+            "location": location,
+            "link": link
+        })
+    
+    # Scrape 20 pages
+    for page in range(1, 21):
+        print(f"Scraping page {page}")
+        
+        # Human-like scroll through the page
+        wait_random('standard')
+        
+        # Find all profile link elements again after scrolling
+        link_elements = driver.find_elements(By.CSS_SELECTOR, "div.entity-result__divider")
+        
+        # Extract href attributes and other details
+        for index, element in enumerate(link_elements, 1):
+            print(f"Processing element {index}/{len(link_elements)}")
+            
+            try:
+                link_element = element.find_element(By.CSS_SELECTOR, "span.entity-result__title-text a.app-aware-link")
+                link = link_element.get_attribute("href")
+                name_element = link_element.find_element(By.CSS_SELECTOR, "span[aria-hidden='true']")
+                name = name_element.text.strip()
+                print(f"Found link: {link}")
+                print(f"Found name: {name}")
+            except Exception as e:
+                print(f"Error finding link: {str(e)}")
+                continue
+            
+            try:
+                role = element.find_element(By.CSS_SELECTOR, "div.entity-result__primary-subtitle").text
+                print(f"Found role: {role}")
+            except Exception as e:
+                print(f"Error finding role: {str(e)}")
+                role = "N/A"
+            
+            try:
+                location = element.find_element(By.CSS_SELECTOR, "div.entity-result__secondary-subtitle").text
+                print(f"Found location: {location}")
+            except Exception as e:
+                print(f"Error finding location: {str(e)}")
+                location = "N/A"
+            
+            if link not in profile_links:
+                profile_links.append(link)
+                profiles.append({
+                    "name": name,
+                    "role": role,
+                    "location": location,
+                    "link": link
+                })
+        
+        if page < 20:
+            try:
+                next_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[@aria-label='Next']"))
+                )
+                human_like_scroll(driver, next_button)
+                human_like_click(driver, next_button)
+                wait_random('standard')
+            except Exception as e:
+                print(f"Error clicking next button: {str(e)}")
+                break
+        
+        wait_random('standard')
+    print(f"Found {len(profiles)} profiles")
+    return profiles  # Return the list of profiles

@@ -44,7 +44,7 @@ function sendPostRequest(url, data, userAgent) {
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "scrapeCommenters" || request.action === "autoConnect" || request.action === "configureFilters") {
+  if (["scrapeCommenters", "autoConnect", "configureFilters", "scrapeSearchResults"].includes(request.action)) {
     getLiAtCookie((li_at) => {
       if (li_at) {
         const url = window.location.href;
@@ -71,16 +71,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
 
         sendPostRequest(endpoint, data, userAgent)
-          .then(response => response.json())
+          .then(response => {
+            if (request.action === "scrapeCommenters" || request.action === "scrapeSearchResults") {
+              return response.blob();
+            }
+            return response.json();
+          })
           .then(result => {
-            if (request.action === "scrapeCommenters") {
+            if (request.action === "scrapeCommenters" || request.action === "scrapeSearchResults") {
               // Handle CSV download
-              const blob = new Blob([result], { type: 'text/csv' });
-              const url = window.URL.createObjectURL(blob);
+              const filename = request.action === "scrapeCommenters" ? 'linkedin_profiles.csv' : 'linkedin_profile_links.csv';
+              const url = window.URL.createObjectURL(result);
               const a = document.createElement('a');
               a.style.display = 'none';
               a.href = url;
-              a.download = 'linkedin_profiles.csv';
+              a.download = filename;
               document.body.appendChild(a);
               a.click();
               window.URL.revokeObjectURL(url);
